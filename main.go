@@ -45,7 +45,7 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/books", getBooks).Methods("GET")
-	//router.HandleFunc("/books/{id}", getBook).Methods("GET")
+	router.HandleFunc("/books/{id}", getBook).Methods("GET")
 	//router.HandleFunc("/books", addBook).Methods("POST")
 	//router.HandleFunc("/books", updateBook).Methods("PUT")
 	//router.HandleFunc("/books/{id}", removeBook).Methods("DELETE")
@@ -70,4 +70,16 @@ func getBooks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(books)
+}
+
+func getBook(w http.ResponseWriter, r *http.Request) {
+	var book Book
+	params := mux.Vars(r)
+
+	rows := db.QueryRow("select * from books where id=$1", params["id"])
+
+	err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.Year)
+	logFatal(err)
+
+	json.NewEncoder(w).Encode(book)
 }
