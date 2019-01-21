@@ -1,22 +1,30 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/lib/pq"
-	"github.com/subosito/gotenv"
+	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/gorilla/mux"
+	"github.com/lib/pq"
+	"github.com/subosito/gotenv"
 )
 
 type Book struct {
-	ID     int    `json:"id"`
-	Title  string `json:"title"`
-	Author string `json:"author"`
-	Year   string `json:"year"`
+	ID     int    `json:id`
+	Title  string `json:title`
+	Author string `json:author`
+	Year   string `json:year`
 }
 
 var books []Book
+var db *sql.DB
+
+func init() {
+	gotenv.Load()
+}
 
 func logFatal(err error) {
 	if err != nil {
@@ -24,43 +32,42 @@ func logFatal(err error) {
 	}
 }
 
-func init() {
-	gotenv.Load()
-}
-
 func main() {
-
 	pgUrl, err := pq.ParseURL(os.Getenv("ELEPHANTSQL_URL"))
 	logFatal(err)
-	log.Println(pgUrl)
+
+	db, err = sql.Open("postgres", pgUrl)
+	logFatal(err)
+
+	err = db.Ping()
+	logFatal(err)
 
 	router := mux.NewRouter()
+
 	router.HandleFunc("/books", getBooks).Methods("GET")
-	router.HandleFunc("/books/{id}", getBook).Methods("GET")
-	router.HandleFunc("/books", addBook).Methods("POST")
-	router.HandleFunc("/books", updateBook).Methods("PUT")
-	router.HandleFunc("/books/{id}", removeBook).Methods("DELETE")
+	//router.HandleFunc("/books/{id}", getBook).Methods("GET")
+	//router.HandleFunc("/books", addBook).Methods("POST")
+	//router.HandleFunc("/books", updateBook).Methods("PUT")
+	//router.HandleFunc("/books/{id}", removeBook).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
-
 }
 
 func getBooks(w http.ResponseWriter, r *http.Request) {
+	var book Book
+	books = []Book{}
 
-}
+	rows, err := db.Query("select * from books")
+	logFatal(err)
 
-func getBook(w http.ResponseWriter, r *http.Request) {
+	defer rows.Close()
 
-}
+	for rows.Next() {
+		err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.Year)
+		logFatal(err)
 
-func addBook(w http.ResponseWriter, r *http.Request) {
+		books = append(books, book)
+	}
 
-}
-
-func updateBook(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func removeBook(w http.ResponseWriter, r *http.Request) {
-
+	json.NewEncoder(w).Encode(books)
 }
