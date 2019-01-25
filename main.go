@@ -3,13 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
-	"net/http"
-	"os"
-
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"github.com/subosito/gotenv"
+	"log"
+	"net/http"
+	"os"
 )
 
 type Book struct {
@@ -46,7 +45,7 @@ func main() {
 
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books/{id}", getBook).Methods("GET")
-	//router.HandleFunc("/books", addBook).Methods("POST")
+	router.HandleFunc("/books", addBook).Methods("POST")
 	//router.HandleFunc("/books", updateBook).Methods("PUT")
 	//router.HandleFunc("/books/{id}", removeBook).Methods("DELETE")
 
@@ -82,4 +81,18 @@ func getBook(w http.ResponseWriter, r *http.Request) {
 	logFatal(err)
 
 	json.NewEncoder(w).Encode(book)
+}
+
+func addBook(w http.ResponseWriter, r *http.Request) {
+	var book Book
+	var bookID int
+
+	json.NewDecoder(r.Body).Decode(&book)
+
+	err := db.QueryRow("insert into books (title,  author, year) values( $1, $2, $3) RETURNING id; ",
+		book.Title, book.Author, book.Year).Scan(&bookID)
+
+	logFatal(err)
+
+	json.NewEncoder(w).Encode(bookID)
 }
